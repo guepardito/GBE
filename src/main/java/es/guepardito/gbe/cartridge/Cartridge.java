@@ -13,6 +13,10 @@ public class Cartridge {
         loadCartridge(pathToRom);
     }
 
+    public Cartridge(byte[] rom) {
+        this.rom = rom;
+    }
+
     private void loadCartridge(String pathToRom) {
         try {
             Path p = Paths.get(pathToRom);

@@ -21,6 +21,20 @@ public class CPU {
         opcodes[opcode].run();
     }
 
+    public int readNextByte() {
+        int _byte = bus.read(registers.getPC());
+        registers.setPC(registers.getPC() + 1);
+        return _byte;
+    }
+
+    public int readNextWord() {
+        int low = bus.read(registers.getPC());
+        registers.setPC(registers.getPC() + 1);
+        int high = bus.read(registers.getPC());
+        registers.setPC(registers.getPC() + 1);
+        return (high << 8) | low;
+    }
+
     private void buildOpcodeTable() {
         opcodes = new Runnable[256];
         opcodesCB = new Runnable[256];
@@ -31,7 +45,16 @@ public class CPU {
             opcodesCB[i] = () -> unkownOpcode(opcode);
         }
 
+        // nop
         opcodes[0x00] = this::nop;
+        // LD BC, u16
+        opcodes[0x01] = () -> registers.setBC(readNextWord());
+        // LD DE, u16
+        opcodes[0x11] = () -> registers.setDE(readNextWord());
+        // LD HL, u16
+        opcodes[0x21] = () -> registers.setHL(readNextWord());
+        // LD SP, u16
+        opcodes[0x31] = () -> registers.setSP(readNextWord());
 
         opcodes[0xCB] = this::stepCB;
     }
