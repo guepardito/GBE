@@ -3,8 +3,8 @@ package es.guepardito.gbe.cpu;
 import es.guepardito.gbe.memory.Bus;
 
 public class CPU {
-    private Registers registers;
-    private Bus bus;
+    private final Registers registers;
+    private final Bus bus;
     private Runnable[] opcodes;
     private Runnable[] opcodesCB;
 
@@ -63,61 +63,27 @@ public class CPU {
             int src = i & 0x07;
 
             opcodes[i] = () -> {
-                int srcValue;
-                switch (src) {
-                    case 0b000:
-                        srcValue = registers.getB();
-                        break;
-                    case 0b001:
-                        srcValue = registers.getC();
-                        break;
-                    case 0b010:
-                        srcValue = registers.getD();
-                        break;
-                    case 0b011:
-                        srcValue = registers.getE();
-                        break;
-                    case 0b100:
-                        srcValue = registers.getH();
-                        break;
-                    case 0b101:
-                        srcValue = registers.getL();
-                        break;
-                    case 0b110:
-                        srcValue = bus.read(registers.getHL());
-                        break;
-                    case 0b111:
-                        srcValue = registers.getA();
-                        break;
-                    default:
-                        srcValue = 0;
-                }
+                int srcValue = switch (src) {
+                    case 0b000 -> registers.getB();
+                    case 0b001 -> registers.getC();
+                    case 0b010 -> registers.getD();
+                    case 0b011 -> registers.getE();
+                    case 0b100 -> registers.getH();
+                    case 0b101 -> registers.getL();
+                    case 0b110 -> bus.read(registers.getHL());
+                    case 0b111 -> registers.getA();
+                    default -> 0;
+                };
 
                 switch (dest) {
-                    case 0b000:
-                        registers.setB(srcValue);
-                        break;
-                    case 0b001:
-                        registers.setC(srcValue);
-                        break;
-                    case 0b010:
-                        registers.setD(srcValue);
-                        break;
-                    case 0b011:
-                        registers.setE(srcValue);
-                        break;
-                    case 0b100:
-                        registers.setH(srcValue);
-                        break;
-                    case 0b101:
-                        registers.setL(srcValue);
-                        break;
-                    case 0b110:
-                        bus.write(registers.getHL(), srcValue);
-                        break;
-                    case 0b111:
-                        registers.setA(srcValue);
-                        break;
+                    case 0b000 -> registers.setB(srcValue);
+                    case 0b001 -> registers.setC(srcValue);
+                    case 0b010 -> registers.setD(srcValue);
+                    case 0b011 -> registers.setE(srcValue);
+                    case 0b100 -> registers.setH(srcValue);
+                    case 0b101 -> registers.setL(srcValue);
+                    case 0b110 -> bus.write(registers.getHL(), srcValue);
+                    case 0b111 -> registers.setA(srcValue);
                 }
 
             };
