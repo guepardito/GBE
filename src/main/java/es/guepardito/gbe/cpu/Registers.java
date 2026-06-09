@@ -1,17 +1,27 @@
 package es.guepardito.gbe.cpu;
 
 public class Registers {
-    int A; // Accumulator
-    int B;
-    int C;
-    int D;
-    int E;
-    int F; // Flags
-    int H;
-    int L;
+    private int A; // Accumulator
+    private int B;
+    private int C;
+    private int D;
+    private int E;
+    private int F; // Flags
+    private int H;
+    private int L;
 
-    int SP;
-    int PC;
+    private int SP;
+    private int PC;
+
+    public Registers() {
+        setAF(0x01B0);
+        setBC(0x0013);
+        setDE(0x00D8);
+        setHL(0x014D);
+
+        SP = 0xFFFE;
+        PC = 0x0100;
+    }
 
     // Getters and Setters
     // Registers
