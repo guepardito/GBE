@@ -47,4 +47,9 @@ public class CPU {
     }
 
     private void nop() {}
+
+
+    public Registers getRegisters() {
+        return registers;
+    }
 }
