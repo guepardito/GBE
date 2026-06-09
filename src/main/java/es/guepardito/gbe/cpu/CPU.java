@@ -56,6 +56,73 @@ public class CPU {
         // LD SP, u16
         opcodes[0x31] = () -> registers.setSP(readNextWord());
 
+        // 8-bit register to register loads
+        for (int i = 0x40; i <= 0x7F; i++) {
+            if (i == 0x76) continue;
+            int dest = i >> 3 & 0x07;
+            int src = i & 0x07;
+
+            opcodes[i] = () -> {
+                int srcValue;
+                switch (src) {
+                    case 0b000:
+                        srcValue = registers.getB();
+                        break;
+                    case 0b001:
+                        srcValue = registers.getC();
+                        break;
+                    case 0b010:
+                        srcValue = registers.getD();
+                        break;
+                    case 0b011:
+                        srcValue = registers.getE();
+                        break;
+                    case 0b100:
+                        srcValue = registers.getH();
+                        break;
+                    case 0b101:
+                        srcValue = registers.getL();
+                        break;
+                    case 0b110:
+                        srcValue = bus.read(registers.getHL());
+                        break;
+                    case 0b111:
+                        srcValue = registers.getA();
+                        break;
+                    default:
+                        srcValue = 0;
+                }
+
+                switch (dest) {
+                    case 0b000:
+                        registers.setB(srcValue);
+                        break;
+                    case 0b001:
+                        registers.setC(srcValue);
+                        break;
+                    case 0b010:
+                        registers.setD(srcValue);
+                        break;
+                    case 0b011:
+                        registers.setE(srcValue);
+                        break;
+                    case 0b100:
+                        registers.setH(srcValue);
+                        break;
+                    case 0b101:
+                        registers.setL(srcValue);
+                        break;
+                    case 0b110:
+                        bus.write(registers.getHL(), srcValue);
+                        break;
+                    case 0b111:
+                        registers.setA(srcValue);
+                        break;
+                }
+
+            };
+        }
+
         opcodes[0xCB] = this::stepCB;
     }
 

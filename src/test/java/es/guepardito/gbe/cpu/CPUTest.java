@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CPUTest {
     @Test
-    public void CPUInitialization() throws URISyntaxException {
+    public void CPUInitializationTest() throws URISyntaxException {
         String path = Paths.get(
                 Objects.requireNonNull(getClass().getClassLoader().getResource("roms/cpu_instrs.gb")).toURI()
         ).toString();
@@ -25,7 +25,7 @@ public class CPUTest {
     }
 
     @Test
-    public void LoadInstructions() {
+    public void LoadInstructionsTest() {
         byte[] rom = new byte[0x0FFF];
         rom[0x0100] = 0x01; // load BC
         rom[0x0101] = 0x34;
@@ -56,5 +56,17 @@ public class CPUTest {
 
         cpu.step();
         assertEquals(0x1234, cpu.getRegisters().getSP());
+    }
+
+    @Test
+    public void Bit8Reg2RegLoadTest() {
+        byte[] rom = new byte[0x0FFF];
+        rom[0x0100] = 0x47;
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setA(0x12);
+
+        cpu.step();
+        assertEquals(0x12, cpu.getRegisters().getB());
     }
 }
