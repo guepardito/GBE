@@ -1,6 +1,5 @@
 package es.guepardito.gbe;
 
-import es.guepardito.gbe.cartridge.Cartridge;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
