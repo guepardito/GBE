@@ -21,6 +21,7 @@ public class CPU {
         opcodes[opcode].run();
     }
 
+    @SuppressWarnings("unused")
     public int readNextByte() {
         int _byte = bus.read(registers.getPC());
         registers.setPC(registers.getPC() + 1);
