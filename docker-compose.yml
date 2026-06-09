@@ -1,0 +1,10 @@
+services:
+  gbe_tests:
+    build: .
+    container_name: gbe-tests
+    restart: no
+    volumes:
+      - maven_cache:/root/.m2
+
+volumes:
+  maven_cache:
