@@ -2,17 +2,45 @@ package es.guepardito.gbe.memory;
 
 import es.guepardito.gbe.cartridge.Cartridge;
 
+/**
+ * Represents the Game Boy memory bus.
+ *
+ * <p>The bus provides a unified interface for all memory accesses
+ * performed by the CPU. It is responsible for routing reads and writes
+ * to the appropriate hardware component based on the accessed address.</p>
+ *
+ * <p>This implementation currently supports cartridge ROM, work RAM
+ * (WRAM), and high RAM (HRAM). Additional memory regions and hardware
+ * devices will be mapped here as the emulator evolves.</p>
+ */
 public class Bus {
-    private Cartridge cartridge;
-    private byte[] wram;
-    private byte[] hram;
+    /** Loaded game cartridge. */
+    private final Cartridge cartridge;
+    /** Internal Work RAM (8 KB). */
+    private final byte[] wram;
+    /** High RAM (127 bytes). */
+    private final byte[] hram;
 
+    /**
+     * Creates a new memory bus.
+     *
+     * @param cartridge Cartridge connected to the system.
+     */
     public Bus(Cartridge cartridge) {
         this.cartridge = cartridge;
         wram = new byte[0x2000]; // 8KB of Work RAM
         hram = new byte[0x7F];   // 127 bytes of High RAM
     }
 
+    /**
+     * Reads a byte from the Game Boy memory map.
+     *
+     * <p>The returned value is always an unsigned 8-bit integer in the
+     * range {@code 0x00-0xFF}.</p>
+     *
+     * @param address 16-bit memory address.
+     * @return Value stored at the specified address.
+     */
     public int read(int address) {
         if (address >= 0 && address <= 0x7FFF) {
             return cartridge.readByte(address);
@@ -25,6 +53,15 @@ public class Bus {
         return 0xFF;
     }
 
+    /**
+     * Writes a byte to the Game Boy memory map.
+     *
+     * <p>Writes targeting ROM regions are ignored, as cartridge ROM is
+     * read-only from the CPU's perspective.</p>
+     *
+     * @param address 16-bit memory address.
+     * @param value Value to write. Only the lower 8 bits are stored.
+     */
     public void write(int address, int value) {
         if (address >= 0 && address <= 0x7FFF) {
             // ROM is read-only, do nothing
