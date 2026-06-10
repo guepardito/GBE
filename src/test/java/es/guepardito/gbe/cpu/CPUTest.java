@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CPUTest {
     private byte[] makeRom(int... bytes) {
-        byte[] rom = new byte[0x0FFF];
+        byte[] rom = new byte[0x8000];
         for (int i = 0; i < bytes.length; i++) {
             rom[0x0100 + i] = (byte) bytes[i];
         }
@@ -149,6 +149,53 @@ public class CPUTest {
         cpu.step();
         assertEquals(0x1111, cpu.getRegisters().getSP());
     }
+
+    @Test
+    public void LD_FF00u8_A_Test() {
+        byte[] rom = makeRom(0xE0, 0x11);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setA(0x11);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getBus().read(0xFF11));
+    }
+
+    @Test
+    public void LD_A_FF00u8_Test() {
+        byte[] rom = makeRom(0xF0, 0x11);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getBus().write(0xFF11, 0x11);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getRegisters().getA());
+    }
+
+    @Test
+    public void LD_FF00C_A_Test() {
+        byte[] rom = makeRom(0xE2);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setA(0x11);
+        cpu.getRegisters().setC(0x11);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getBus().read(0xFF11));
+    }
+
+    @Test
+    public void LD_A_FF00C_Test() {
+        byte[] rom = makeRom(0xF2);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setC(0x11);
+        cpu.getBus().write(0xFF11, 0x11);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getRegisters().getA());
+    }
+
 
     @Test
     public void LD_u16_A_Test() {

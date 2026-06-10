@@ -209,6 +209,24 @@ public class CPU {
             opcodes[i] = () -> setRegister(dest, getRegister(src));
         }
 
+        // LD (FF00+u8), A
+        opcodes[0xE0] = () -> {
+            int imm = readNextByte();
+            bus.write(0xFF00 + imm, registers.getA());
+        };
+
+        // LD A, (FF00+u8)
+        opcodes[0xF0] = () -> {
+            int imm = readNextByte();
+            registers.setA(bus.read(0xFF00 + imm));
+        };
+
+        // LD (FF00+C), A
+        opcodes[0xE2] = () -> bus.write(0xFF00 + registers.getC(), registers.getA());
+
+        // LD A, (FF00+C)
+        opcodes[0xF2] = () -> registers.setA(bus.read(0xFF00 + registers.getC()));
+
         // LD (u16), A
         opcodes[0xEA] = () -> {
             int address = readNextWord();
