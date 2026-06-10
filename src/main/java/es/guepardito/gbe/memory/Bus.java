@@ -20,6 +20,7 @@ public class Bus {
     private final byte[] wram;
     /** High RAM (127 bytes). */
     private final byte[] hram;
+    private final byte[] ioRegisters;
 
     /**
      * Creates a new memory bus.
@@ -30,6 +31,7 @@ public class Bus {
         this.cartridge = cartridge;
         wram = new byte[0x2000]; // 8KB of Work RAM
         hram = new byte[0x7F];   // 127 bytes of High RAM
+        ioRegisters = new byte[0x7F]; // 127 bytes of I/O registers
     }
 
     /**
@@ -46,6 +48,8 @@ public class Bus {
             return cartridge.readByte(address);
         } else if (address >= 0xC000 && address <= 0xDFFF) {
             return wram[address - 0xC000] & 0xFF;
+        } else if (address >= 0xFF00 && address <= 0xFF7F) {
+            return ioRegisters[address - 0xFF00]  & 0xFF;
         }  else if (address >= 0xFF80 && address <= 0xFFFE) {
             return hram[address - 0xFF80]  & 0xFF;
         }
@@ -67,7 +71,9 @@ public class Bus {
             // ROM is read-only, do nothing
         } else if (address >= 0xC000 && address <= 0xDFFF) {
             wram[address - 0xC000] = (byte) value;
-        } else if (address >= 0xFF80 && address <= 0xFFFE) {
+        } else if (address >= 0xFF00 && address <= 0xFF7F) {
+            ioRegisters[address - 0xFF00] = (byte) value;
+        }   else if (address >= 0xFF80 && address <= 0xFFFE) {
             hram[address - 0xFF80] = (byte) value;
         }
     }
