@@ -2,8 +2,6 @@ package es.guepardito.gbe.cpu;
 
 import es.guepardito.gbe.memory.Bus;
 
-import javax.tools.OptionChecker;
-
 /**
  * Emulates the Sharp LR35902 CPU used by the Nintendo Game Boy.
  *
@@ -183,6 +181,17 @@ public class CPU {
             registers.setHL(registers.getHL() - 1);
         };
 
+        // LD (u16), SP
+        opcodes[0x08] = () -> {
+            int address = readNextWord();
+            int lowSP = registers.getSP() & 0xFF;
+            int highSP = (registers.getSP() >> 8) & 0xFF;
+            bus.write(address, lowSP);
+            bus.write(address + 1, highSP);
+        };
+        // LD SP, HL
+        opcodes[0xF9] = () -> registers.setSP(registers.getHL());
+
         // 8-bit immediate to register loads
         for (int i = 0; i <= 7; i++) {
             int dest = i;
@@ -199,6 +208,18 @@ public class CPU {
 
             opcodes[i] = () -> setRegister(dest, getRegister(src));
         }
+
+        // LD (u16), A
+        opcodes[0xEA] = () -> {
+            int address = readNextWord();
+            bus.write(address, registers.getA());
+        };
+
+        // LD A, (u16)
+        opcodes[0xFA] = () -> {
+            int address = readNextWord();
+            registers.setA(bus.read(address));
+        };
 
         // 0xCB prefix
         opcodes[0xCB] = this::stepCB;

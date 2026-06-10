@@ -11,6 +11,14 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CPUTest {
+    private byte[] makeRom(int... bytes) {
+        byte[] rom = new byte[0x0FFF];
+        for (int i = 0; i < bytes.length; i++) {
+            rom[0x0100 + i] = (byte) bytes[i];
+        }
+        return rom;
+    }
+
     @Test
     public void CPUInitializationTest() throws URISyntaxException {
         String path = Paths.get(
@@ -117,5 +125,50 @@ public class CPUTest {
         cpu.step();
         assertEquals(0x01, cpu.getRegisters().getA());
         assertEquals(0xC001, cpu.getRegisters().getHL());
+    }
+
+    @Test
+    public void LD_u16_SP_Test() {
+        byte[] rom = makeRom(0x08, 0x00, 0xC0);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setSP(0x1111);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getBus().read(0xC000));
+        assertEquals(0x11, cpu.getBus().read(0xC001));
+    }
+
+    @Test
+    public void LD_SP_HL_Test() {
+        byte[] rom = makeRom(0xF9);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setHL(0x1111);
+
+        cpu.step();
+        assertEquals(0x1111, cpu.getRegisters().getSP());
+    }
+
+    @Test
+    public void LD_u16_A_Test() {
+        byte[] rom = makeRom(0xEA, 0x00, 0xC0);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setA(0x11);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getBus().read(0xC000));
+    }
+
+    @Test
+    public void LD_A_u16_Test() {
+        byte[] rom = makeRom(0xFA, 0x00, 0xC0);
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getBus().write(0xC000, 0x11);
+
+        cpu.step();
+        assertEquals(0x11, cpu.getRegisters().getA());
     }
 }
