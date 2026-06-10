@@ -2,6 +2,8 @@ package es.guepardito.gbe.cpu;
 
 import es.guepardito.gbe.memory.Bus;
 
+import javax.tools.OptionChecker;
+
 /**
  * Emulates the Sharp LR35902 CPU used by the Nintendo Game Boy.
  *
@@ -151,6 +153,36 @@ public class CPU {
         // LD SP, u16
         opcodes[0x31] = () -> registers.setSP(readNextWord());
 
+        // LD (BC), A
+        opcodes[0x02] = () -> bus.write(registers.getBC(), registers.getA());
+        // LD (DE), A
+        opcodes[0x12] = () -> bus.write(registers.getDE(), registers.getA());
+        // LD (HL+), A
+        opcodes[0x22] = () -> {
+            bus.write(registers.getHL(), registers.getA());
+            registers.setHL(registers.getHL() + 1);
+        };
+        // LD (HL-), A
+        opcodes[0x32] = () -> {
+            bus.write(registers.getHL(), registers.getA());
+            registers.setHL(registers.getHL() - 1);
+        };
+
+        // LD A, (BC)
+        opcodes[0x0A] = () -> registers.setA(bus.read(registers.getBC()));
+        // LD A, (DE)
+        opcodes[0x1A] = () -> registers.setA(bus.read(registers.getDE()));
+        // LD A, (HL+)
+        opcodes[0x2A] = () -> {
+            registers.setA(bus.read(registers.getHL()));
+            registers.setHL(registers.getHL() + 1);
+        };
+        // LD A, (HL-)
+        opcodes[0x3A] = () -> {
+            registers.setA(bus.read(registers.getHL()));
+            registers.setHL(registers.getHL() - 1);
+        };
+
         // 8-bit immediate to register loads
         for (int i = 0; i <= 7; i++) {
             int dest = i;
@@ -168,6 +200,7 @@ public class CPU {
             opcodes[i] = () -> setRegister(dest, getRegister(src));
         }
 
+        // 0xCB prefix
         opcodes[0xCB] = this::stepCB;
     }
 

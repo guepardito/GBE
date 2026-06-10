@@ -88,4 +88,34 @@ public class CPUTest {
         cpu.step();
         assertEquals(0x02, cpu.getBus().read(cpu.getRegisters().getHL()));
     }
+
+    // TODO: Divide in tests for each instruction
+    @Test()
+    public void memory2A2memoryLoadTest() {
+        byte[] rom = new byte[0x0FFF];
+        rom[0x0100] = 0x02; // Load A to Memory at (BC) address
+        rom[0x0101] = 0x0A; // Load Memory at (BC) address to A
+        rom[0x0102] = 0x22; // Load A to Memory at (HL) address and increment HL
+        rom[0x0103] = 0x3A; // Load Memory at (HL) address to A and decrement HL
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setA(0x01);
+        cpu.getRegisters().setBC(0xC000); // Set BC point to WRAM
+        cpu.getRegisters().setHL(0xC002);
+
+        cpu.step();
+        assertEquals(0x01, cpu.getBus().read(cpu.getRegisters().getBC()));
+
+        cpu.step();
+        assertEquals(0x01, cpu.getRegisters().getA());
+
+        cpu.step();
+        assertEquals(0x01, cpu.getBus().read(cpu.getRegisters().getHL()-1));
+        assertEquals(0xC003, cpu.getRegisters().getHL());
+
+        cpu.getRegisters().setHL(0xC002);
+        cpu.step();
+        assertEquals(0x01, cpu.getRegisters().getA());
+        assertEquals(0xC001, cpu.getRegisters().getHL());
+    }
 }
