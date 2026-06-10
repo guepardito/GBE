@@ -2,10 +2,24 @@ package es.guepardito.gbe.cpu;
 
 import es.guepardito.gbe.memory.Bus;
 
+/**
+ * Emulates the Sharp LR35902 CPU used by the Nintendo Game Boy.
+ *
+ * <p>The CPU executes instructions by performing the classic
+ * fetch-decode-execute cycle. Instructions are dispatched through
+ * precomputed opcode tables for both standard and CB-prefixed opcodes.</p>
+ *
+ * <p>This implementation currently focuses on instruction execution and
+ * does not yet emulate timing, interrupts, HALT, or STOP states.</p>
+ */
 public class CPU {
+    /** CPU registers. */
     private final Registers registers;
+    /** Memory bus used by the CPU. */
     private final Bus bus;
+    /** Main opcode dispatch table. */
     private Runnable[] opcodes;
+    /** CB-prefixed opcode dispatch table. */
     private Runnable[] opcodesCB;
 
     public CPU(Bus bus) {
@@ -14,6 +28,13 @@ public class CPU {
         buildOpcodeTable();
     }
 
+    /**
+     * Executes a single CPU instruction.
+     *
+     * <p>Performs the fetch-decode-execute cycle by reading the opcode
+     * at the current program counter and dispatching it through the
+     * opcode table.</p>
+     */
     public void step() {
         // Fetch
         int opcode = bus.read(registers.getPC());
@@ -21,13 +42,23 @@ public class CPU {
         opcodes[opcode].run();
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Reads the next byte from memory and advances the program counter.
+     *
+     * @return Unsigned 8-bit value.
+     */
     public int readNextByte() {
         int _byte = bus.read(registers.getPC());
         registers.setPC(registers.getPC() + 1);
         return _byte;
     }
 
+    /**
+     * Reads the next 16-bit little-endian value from memory and advances
+     * the program counter by two bytes.
+     *
+     * @return Unsigned 16-bit value.
+     */
     public int readNextWord() {
         int low = bus.read(registers.getPC());
         registers.setPC(registers.getPC() + 1);
@@ -36,6 +67,25 @@ public class CPU {
         return (high << 8) | low;
     }
 
+    /**
+     * Resolves a register code used by many LR35902 instructions.
+     *
+     * <p>The encoding follows the Game Boy opcode format:</p>
+     *
+     * <pre>
+     * 000 = B
+     * 001 = C
+     * 010 = D
+     * 011 = E
+     * 100 = H
+     * 101 = L
+     * 110 = (HL)
+     * 111 = A
+     * </pre>
+     *
+     * @param code Register encoding.
+     * @return Register value or memory contents at HL.
+     */
     private int getRegister(int code) {
         return switch (code) {
             case 0b000 -> registers.getB();
@@ -50,6 +100,15 @@ public class CPU {
         };
     }
 
+    /**
+     * Writes a value to a register specified by an LR35902 register code.
+     *
+     * <p>When the code corresponds to (HL), the value is written to memory
+     * instead of a CPU register.</p>
+     *
+     * @param code Register encoding.
+     * @param value Value to write.
+     */
     private void setRegister(int code, int value) {
         switch (code) {
             case 0b000 -> registers.setB(value);
@@ -63,14 +122,22 @@ public class CPU {
         }
     }
 
+    /**
+     * Builds the opcode dispatch tables.
+     *
+     * <p>All entries are initialized to an unknown opcode handler and then
+     * replaced with implemented instruction handlers.</p>
+     *
+     * <p>The CB-prefixed instruction set uses a separate dispatch table.</p>
+     */
     private void buildOpcodeTable() {
         opcodes = new Runnable[256];
         opcodesCB = new Runnable[256];
 
         for (int i = 0; i < 256; i++) {
             final int opcode = i;
-            opcodes[i] = () -> unkownOpcode(opcode);
-            opcodesCB[i] = () -> unkownOpcode(opcode);
+            opcodes[i] = () -> unknownOpcode(opcode);
+            opcodesCB[i] = () -> unknownOpcode(opcode);
         }
 
         // nop
@@ -104,16 +171,32 @@ public class CPU {
         opcodes[0xCB] = this::stepCB;
     }
 
-    private void unkownOpcode(int opcode) {
+    /**
+     * Invoked when an unimplemented opcode is executed.
+     *
+     * @param opcode Opcode value.
+     */
+    private void unknownOpcode(int opcode) {
         throw new IllegalArgumentException("Unknown opcode " + opcode);
     }
 
+    /**
+     * Executes a CB-prefixed instruction.
+     *
+     * <p>The CB prefix extends the base instruction set with bit operations,
+     * shifts, rotates, and other extended instructions.</p>
+     */
     private void stepCB() {
         int opcode = bus.read(registers.getPC());
         registers.setPC(registers.getPC() + 1);
         opcodesCB[opcode].run();
     }
 
+    /**
+     * No Operation.
+     *
+     * <p>Consumes one instruction without modifying CPU state.</p>
+     */
     private void nop() {}
 
 
