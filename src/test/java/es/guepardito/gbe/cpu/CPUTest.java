@@ -69,4 +69,23 @@ public class CPUTest {
         cpu.step();
         assertEquals(0x12, cpu.getRegisters().getB());
     }
+
+    @Test
+    public void Bit8Imm2RegLoadTest(){
+        byte[] rom = new byte[0x0FFF];
+        rom[0x0100] = 0x06; // Load imm to B
+        rom[0x0101] = 0x01;
+
+        rom[0x0102] = 0x36; // Load imm to [HL]
+        rom[0x0103] = 0x02;
+
+        CPU cpu = new CPU(new Bus(new Cartridge(rom)));
+        cpu.getRegisters().setHL(0xC000); // Set HL point to WRAM instead of Cartridge
+
+        cpu.step();
+        assertEquals(0x01, cpu.getRegisters().getB());
+
+        cpu.step();
+        assertEquals(0x02, cpu.getBus().read(cpu.getRegisters().getHL()));
+    }
 }

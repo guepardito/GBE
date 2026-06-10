@@ -36,6 +36,33 @@ public class CPU {
         return (high << 8) | low;
     }
 
+    private int getRegister(int code) {
+        return switch (code) {
+            case 0b000 -> registers.getB();
+            case 0b001 -> registers.getC();
+            case 0b010 -> registers.getD();
+            case 0b011 -> registers.getE();
+            case 0b100 -> registers.getH();
+            case 0b101 -> registers.getL();
+            case 0b110 -> bus.read(registers.getHL());
+            case 0b111 -> registers.getA();
+            default -> 0;
+        };
+    }
+
+    private void setRegister(int code, int value) {
+        switch (code) {
+            case 0b000 -> registers.setB(value);
+            case 0b001 -> registers.setC(value);
+            case 0b010 -> registers.setD(value);
+            case 0b011 -> registers.setE(value);
+            case 0b100 -> registers.setH(value);
+            case 0b101 -> registers.setL(value);
+            case 0b110 -> bus.write(registers.getHL(), value);
+            case 0b111 -> registers.setA(value);
+        }
+    }
+
     private void buildOpcodeTable() {
         opcodes = new Runnable[256];
         opcodesCB = new Runnable[256];
@@ -57,37 +84,21 @@ public class CPU {
         // LD SP, u16
         opcodes[0x31] = () -> registers.setSP(readNextWord());
 
+        // 8-bit immediate to register loads
+        for (int i = 0; i <= 7; i++) {
+            int dest = i;
+            int opcode = (i << 3) | 0x06;
+
+            opcodes[opcode] = () -> setRegister(dest, readNextByte());
+        }
+
         // 8-bit register to register loads
         for (int i = 0x40; i <= 0x7F; i++) {
             if (i == 0x76) continue;
             int dest = i >> 3 & 0x07;
             int src = i & 0x07;
 
-            opcodes[i] = () -> {
-                int srcValue = switch (src) {
-                    case 0b000 -> registers.getB();
-                    case 0b001 -> registers.getC();
-                    case 0b010 -> registers.getD();
-                    case 0b011 -> registers.getE();
-                    case 0b100 -> registers.getH();
-                    case 0b101 -> registers.getL();
-                    case 0b110 -> bus.read(registers.getHL());
-                    case 0b111 -> registers.getA();
-                    default -> 0;
-                };
-
-                switch (dest) {
-                    case 0b000 -> registers.setB(srcValue);
-                    case 0b001 -> registers.setC(srcValue);
-                    case 0b010 -> registers.setD(srcValue);
-                    case 0b011 -> registers.setE(srcValue);
-                    case 0b100 -> registers.setH(srcValue);
-                    case 0b101 -> registers.setL(srcValue);
-                    case 0b110 -> bus.write(registers.getHL(), srcValue);
-                    case 0b111 -> registers.setA(srcValue);
-                }
-
-            };
+            opcodes[i] = () -> setRegister(dest, getRegister(src));
         }
 
         opcodes[0xCB] = this::stepCB;
@@ -108,5 +119,9 @@ public class CPU {
 
     public Registers getRegisters() {
         return registers;
+    }
+
+    public Bus getBus() {
+        return bus;
     }
 }
