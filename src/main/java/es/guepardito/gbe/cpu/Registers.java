@@ -1,11 +1,33 @@
 package es.guepardito.gbe.cpu;
 
+/**
+ * Represents the Game Boy CPU register file.
+ *
+ * <p>The LR35902 CPU exposes eight 8-bit registers (A, B, C, D, E, F, H, L)
+ * and two 16-bit registers (SP and PC). Some 8-bit registers can also be
+ * accessed as 16-bit register pairs (AF, BC, DE, HL).</p>
+ *
+ * <p>Register values are stored as Java integers to avoid signed byte
+ * issues. All setters automatically mask values to the appropriate
+ * register width.</p>
+ */
 public class Registers {
     private int A; // Accumulator
     private int B;
     private int C;
     private int D;
     private int E;
+    /**
+     * F register layout:
+     *
+     * <pre>
+     * Bit 7 - Z (Zero)
+     * Bit 6 - N (Subtract)
+     * Bit 5 - H (Half Carry)
+     * Bit 4 - C (Carry)
+     * Bit 3-0 - Unused (always zero)
+     * </pre>
+     */
     private int F; // Flags
     private int H;
     private int L;
@@ -142,10 +164,22 @@ public class Registers {
     }
 
     // Flags
+    /**
+     * Returns the current state of a CPU flag.
+     *
+     * @param flag Flag to query.
+     * @return True if the flag is set.
+     */
     public boolean getFlag(Flag flag) {
         return (flag.value & F) == flag.value;
     }
 
+    /**
+     * Sets or clears a CPU flag.
+     *
+     * @param flag Flag to modify.
+     * @param value True to set the flag, false to clear it.
+     */
     public void setFlag(Flag flag, boolean value) {
         F = (F & ~flag.value) | (value ? flag.value : 0);
     }
