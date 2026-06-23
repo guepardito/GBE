@@ -242,6 +242,30 @@ public class CPU {
         // JP u16
         opcodes[0xC3] = () -> registers.setPC(readNextWord());
 
+        // JR NZ, u8
+        opcodes[0x20] = () -> {
+            int offset = readNextByte();
+            if (!registers.getFlag(Flag.Z)) {
+                registers.setPC(registers.getPC() + (byte) offset);
+            }
+        };
+
+        // INC r8
+        for (int i = 0; i <= 7; i++) {
+            int dest = i;
+            int opcode = (dest << 3) | 0x04;
+
+            opcodes[opcode] = () -> {
+                int value = getRegister(dest);
+                int result = value + 1;
+
+                setRegister(dest, getRegister(dest) + 1);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0);
+                registers.setFlag(Flag.N, false);
+                registers.setFlag(Flag.H, (value & 0xF) == 0xF);
+            };
+        }
 
 
         // 0xCB prefix
