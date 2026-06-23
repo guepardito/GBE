@@ -30,8 +30,8 @@ public class Bus {
     public Bus(Cartridge cartridge) {
         this.cartridge = cartridge;
         wram = new byte[0x2000]; // 8KB of Work RAM
-        hram = new byte[0x7F];   // 127 bytes of High RAM
-        ioRegisters = new byte[0x7F]; // 127 bytes of I/O registers
+        hram = new byte[0x80];   // 127 bytes of High RAM
+        ioRegisters = new byte[0x80]; // 127 bytes of I/O registers
     }
 
     /**
@@ -72,7 +72,14 @@ public class Bus {
         } else if (address >= 0xC000 && address <= 0xDFFF) {
             wram[address - 0xC000] = (byte) value;
         } else if (address >= 0xFF00 && address <= 0xFF7F) {
+            if (address == 0xFF02) {
+                System.out.println("FF02 write: " + value);
+            }
             ioRegisters[address - 0xFF00] = (byte) value;
+
+            if (address == 0xFF02 && value == 0x81) {
+                System.out.print((char) read(0xFF01));
+            }
         }   else if (address >= 0xFF80 && address <= 0xFFFE) {
             hram[address - 0xFF80] = (byte) value;
         }
