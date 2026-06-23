@@ -77,4 +77,8 @@ public class Bus {
             hram[address - 0xFF80] = (byte) value;
         }
     }
+
+    public Cartridge getCartridge() {
+        return cartridge;
+    }
 }

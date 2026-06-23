@@ -4,10 +4,6 @@ import es.guepardito.gbe.cartridge.Cartridge;
 import es.guepardito.gbe.memory.Bus;
 import org.junit.jupiter.api.Test;
 
-import java.net.URISyntaxException;
-import java.nio.file.Paths;
-import java.util.Objects;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CPUTest {
@@ -20,11 +16,9 @@ public class CPUTest {
     }
 
     @Test
-    public void CPUInitializationTest() throws URISyntaxException {
-        String path = Paths.get(
-                Objects.requireNonNull(getClass().getClassLoader().getResource("roms/cpu_instrs.gb")).toURI()
-        ).toString();
-        CPU cpu = new CPU(new Bus(new Cartridge(path)));
+    public void CPUInitializationTest() {
+
+        CPU cpu = new CPU(new Bus(new Cartridge(makeRom(0x00))));
 
         assertEquals(0x0100, cpu.getRegisters().getPC());
         assertEquals(0xFFFE, cpu.getRegisters().getSP());

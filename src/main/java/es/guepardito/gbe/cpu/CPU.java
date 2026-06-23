@@ -239,6 +239,11 @@ public class CPU {
             registers.setA(bus.read(address));
         };
 
+        // JP u16
+        opcodes[0xC3] = () -> registers.setPC(readNextWord());
+
+
+
         // 0xCB prefix
         opcodes[0xCB] = this::stepCB;
     }
@@ -249,7 +254,7 @@ public class CPU {
      * @param opcode Opcode value.
      */
     private void unknownOpcode(int opcode) {
-        throw new IllegalArgumentException("Unknown opcode " + opcode);
+        System.out.printf("Unknown opcode: 0x%02X at PC: 0x%04X%n", opcode, registers.getPC() - 1);
     }
 
     /**
