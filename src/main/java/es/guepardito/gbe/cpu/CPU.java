@@ -86,7 +86,7 @@ public class CPU {
      * @param code Register encoding.
      * @return Register value or memory contents at HL.
      */
-    private int getRegister8(int code) {
+    private int getRegisterFromCode(int code) {
         return switch (code) {
             case 0b000 -> registers.getB();
             case 0b001 -> registers.getC();
@@ -109,7 +109,7 @@ public class CPU {
      * @param code Register encoding.
      * @param value Value to write.
      */
-    private void setRegister8(int code, int value) {
+    private void setRegisterFromCode(int code, int value) {
         switch (code) {
             case 0b000 -> registers.setB(value);
             case 0b001 -> registers.setC(value);
@@ -197,37 +197,37 @@ public class CPU {
             bus.write(registers.getSP(), registers.getF());
         };
 
-            // POP BC
-            opcodes[0xC1] = () -> {
-                registers.setC(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-                registers.setB(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-            };
+        // POP BC
+        opcodes[0xC1] = () -> {
+            registers.setC(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+            registers.setB(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+        };
 
-            // POP DE
-            opcodes[0xD1] = () -> {
-                registers.setE(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-                registers.setD(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-            };
+        // POP DE
+        opcodes[0xD1] = () -> {
+            registers.setE(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+            registers.setD(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+        };
 
-            // POP HL
-            opcodes[0xE1] = () -> {
-                registers.setL(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-                registers.setH(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-            };
+        // POP HL
+        opcodes[0xE1] = () -> {
+            registers.setL(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+            registers.setH(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+        };
 
-            // POP AF
-            opcodes[0xF1] = () -> {
-                registers.setF(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-                registers.setA(bus.read(registers.getSP()));
-                registers.setSP(registers.getSP() + 1);
-            };
+        // POP AF
+        opcodes[0xF1] = () -> {
+            registers.setF(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+            registers.setA(bus.read(registers.getSP()));
+            registers.setSP(registers.getSP() + 1);
+        };
 
         // DI
         opcodes[0xF3] = this::nop;
@@ -290,7 +290,7 @@ public class CPU {
             int dest = i;
             int opcode = (i << 3) | 0x06;
 
-            opcodes[opcode] = () -> setRegister8(dest, readNextByte());
+            opcodes[opcode] = () -> setRegisterFromCode(dest, readNextByte());
         }
 
         // 8-bit register to register loads
@@ -299,7 +299,7 @@ public class CPU {
             int dest = i >> 3 & 0x07;
             int src = i & 0x07;
 
-            opcodes[i] = () -> setRegister8(dest, getRegister8(src));
+            opcodes[i] = () -> setRegisterFromCode(dest, getRegisterFromCode(src));
         }
 
         // LD (FF00+u8), A
@@ -338,7 +338,15 @@ public class CPU {
         // JR NZ, u8
         opcodes[0x20] = () -> {
             int offset = readNextByte();
-            if (!registers.getFlag(Flag.Z)) {
+            if (registers.getFlag(Flag.Z) == 0) {
+                registers.setPC(registers.getPC() + (byte) offset);
+            }
+        };
+
+        // JR NZ, u8
+        opcodes[0x28] = () -> {
+            int offset = readNextByte();
+            if (registers.getFlag(Flag.Z) != 0) {
                 registers.setPC(registers.getPC() + (byte) offset);
             }
         };
@@ -352,14 +360,14 @@ public class CPU {
             int opcode = (dest << 3) | 0x04;
 
             opcodes[opcode] = () -> {
-                int value = getRegister8(dest);
+                int value = getRegisterFromCode(dest);
                 int result = value + 1;
 
-                setRegister8(dest, getRegister8(dest) + 1);
+                setRegisterFromCode(dest, getRegisterFromCode(dest) + 1);
 
-                registers.setFlag(Flag.Z, (result & 0xFF) == 0);
-                registers.setFlag(Flag.N, false);
-                registers.setFlag(Flag.H, (value & 0xF) == 0xF);
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, (value & 0xF) == 0xF ? 1 : 0);
             };
         }
 
@@ -369,14 +377,14 @@ public class CPU {
             int opcode = (dest << 3) | 0x05;
 
             opcodes[opcode] = () -> {
-                int value = getRegister8(dest);
+                int value = getRegisterFromCode(dest);
                 int result = value - 1;
 
-                setRegister8(dest, getRegister8(dest) - 1);
+                setRegisterFromCode(dest, getRegisterFromCode(dest) - 1);
 
-                registers.setFlag(Flag.Z, (result & 0xFF) == 0);
-                registers.setFlag(Flag.N, true);
-                registers.setFlag(Flag.H, (value & 0xF) == 0x0);
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, (value & 0xF) == 0 ? 1 : 0);
             };
         }
 
@@ -404,6 +412,259 @@ public class CPU {
         // DEC SP
         opcodes[0x3B] = () -> registers.setSP(registers.getSP() - 1);
 
+        // ADD A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x80 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int a = registers.getA();
+                int result = a + operand;
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, ((a & 0xF) + (operand & 0xF)) > 0xF ? 1 : 0);
+                registers.setFlag(Flag.C, result > 0xFF ? 1 : 0);
+            };
+        }
+
+        // ADD A, u8
+        opcodes[0xC6] = () -> {
+            int operand = readNextByte();
+            int a = registers.getA();
+            int result = a + operand;
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((a & 0xF) + (operand & 0xF)) > 0xF ? 1 : 0);
+            registers.setFlag(Flag.C, result > 0xFF ? 1 : 0);
+        };
+
+        // ADC A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x88 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int a = registers.getA();
+                int result = a + operand + registers.getFlag(Flag.C);
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, ((a & 0xF) + (operand & 0xF) + registers.getFlag(Flag.C)) > 0xF ? 1 : 0);
+                registers.setFlag(Flag.C, result > 0xFF ? 1 : 0);
+            };
+        }
+
+        // ADC A, u8
+        opcodes[0xCE] = () -> {
+            int operand = readNextByte();
+            int a = registers.getA();
+            int result = a + operand + registers.getFlag(Flag.C);
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((a & 0xF) + (operand & 0xF) + registers.getFlag(Flag.C)) > 0xF ? 1 : 0);
+            registers.setFlag(Flag.C, result > 0xFF ? 1 : 0);
+        };
+
+        // SUB A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x90 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int a = registers.getA();
+                int result = a - operand;
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 1);
+                registers.setFlag(Flag.H, (a & 0xF) < (operand & 0xF) ? 1 : 0);
+                registers.setFlag(Flag.C, result < 0 ? 1 : 0);
+            };
+        }
+
+        // SUB A, u8
+        opcodes[0xD6] = () -> {
+            int operand = readNextByte();
+            int a = registers.getA();
+            int result = a - operand;
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 1);
+            registers.setFlag(Flag.H, (a & 0xF) < (operand & 0xF) ? 1 : 0);
+            registers.setFlag(Flag.C, result < 0 ? 1 : 0);
+        };
+
+        // SBC A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x98 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int a = registers.getA();
+                int result = a - operand - registers.getFlag(Flag.C);
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 1);
+                registers.setFlag(Flag.H, (a & 0xF) < ((operand & 0xF) + registers.getFlag(Flag.C)) ? 1 : 0);
+                registers.setFlag(Flag.C, result < 0 ? 1 : 0);
+            };
+        }
+
+        // SBC A, u8
+        opcodes[0xDE] = () -> {
+            int operand = readNextByte();
+            int a = registers.getA();
+            int result = a - operand - registers.getFlag(Flag.C);
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 1);
+            registers.setFlag(Flag.H, ((a & 0xF) < (operand & 0xF) + registers.getFlag(Flag.C)) ? 1 : 0);
+            registers.setFlag(Flag.C, result < 0 ? 1 : 0);
+        };
+
+        // AND A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0xA0 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int result = registers.getA() & operand;
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, 1);
+                registers.setFlag(Flag.C, 0);
+            };
+        }
+
+        // AND A, u8
+        opcodes[0xE6] = () -> {
+            int operand = readNextByte();
+            int result = registers.getA() & operand;
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 1);
+            registers.setFlag(Flag.C, 0);
+        };
+
+        // OR A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0xB0 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int result = registers.getA() | operand;
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, 0);
+                registers.setFlag(Flag.C, 0);
+            };
+        }
+
+        // OR A, u8
+        opcodes[0xF6] = () -> {
+            int operand = readNextByte();
+            int result = registers.getA() | operand;
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, 0);
+        };
+
+        // XOR A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0xA8 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int result = registers.getA() ^ operand;
+
+                registers.setA(result);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, 0);
+                registers.setFlag(Flag.C, 0);
+            };
+        }
+
+        // XOR A, u8
+        opcodes[0xEE] = () -> {
+            int operand = readNextByte();
+            int result = registers.getA() ^ operand;
+
+            registers.setA(result);
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, 0);
+        };
+
+        // CP A, r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0xB8 + i;
+
+            opcodes[opcode] = () -> {
+                int operand = getRegisterFromCode(code);
+                int a = registers.getA();
+                int result = a - operand;
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+                registers.setFlag(Flag.N, 1);
+                registers.setFlag(Flag.H, (a & 0xF) < (operand & 0xF) ? 1 : 0);
+                registers.setFlag(Flag.C, result < 0 ? 1 : 0);
+            };
+        }
+
+        // CP A, u8
+        opcodes[0xFE] = () -> {
+            int operand = readNextByte();
+            int a = registers.getA();
+            int result = a - operand;
+
+            registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
+            registers.setFlag(Flag.N, 1);
+            registers.setFlag(Flag.H, (a & 0xF) < (operand & 0xF) ? 1 : 0);
+            registers.setFlag(Flag.C, result < 0 ? 1 : 0);
+        };
 
         // 0xCB prefix
         opcodes[0xCB] = this::stepCB;
