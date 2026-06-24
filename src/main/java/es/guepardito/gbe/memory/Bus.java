@@ -72,9 +72,6 @@ public class Bus {
         } else if (address >= 0xC000 && address <= 0xDFFF) {
             wram[address - 0xC000] = (byte) value;
         } else if (address >= 0xFF00 && address <= 0xFF7F) {
-            if (address == 0xFF02) {
-                System.out.println("FF02 write: " + value);
-            }
             ioRegisters[address - 0xFF00] = (byte) value;
 
             if (address == 0xFF02 && value == 0x81) {
