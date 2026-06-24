@@ -142,6 +142,35 @@ public class CPU {
 
         // nop
         opcodes[0x00] = this::nop;
+
+        // CALL u16
+        opcodes[0xCD] = () -> {
+            int dest = readNextWord();
+
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getPC() >> 8);
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getPC() & 0xFF);
+
+            registers.setPC(dest);
+        };
+
+        // RET
+        opcodes[0xC9] = () -> {
+            int low = bus.read(registers.getSP());
+            registers.setSP(registers.getSP() + 1);
+            int high = bus.read(registers.getSP());
+            registers.setSP(registers.getSP() + 1);
+
+            registers.setPC((high << 8) | low);
+        };
+
+        // DI
+        opcodes[0xF3] = this::nop;
+
+        // EI
+        opcodes[0xFB] = this::nop;
+
         // LD BC, u16
         opcodes[0x01] = () -> registers.setBC(readNextWord());
         // LD DE, u16
@@ -266,6 +295,24 @@ public class CPU {
                 registers.setFlag(Flag.H, (value & 0xF) == 0xF);
             };
         }
+
+        // DEC r8
+        for (int i = 0; i <= 7; i++) {
+            int dest = i;
+            int opcode = (dest << 3) | 0x05;
+
+            opcodes[opcode] = () -> {
+                int value = getRegister(dest);
+                int result = value - 1;
+
+                setRegister(dest, getRegister(dest) - 1);
+
+                registers.setFlag(Flag.Z, (result & 0xFF) == 0);
+                registers.setFlag(Flag.N, true);
+                registers.setFlag(Flag.H, (value & 0xF) == 0x0);
+            };
+        }
+
 
 
         // 0xCB prefix
