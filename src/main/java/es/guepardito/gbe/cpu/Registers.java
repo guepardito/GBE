@@ -170,8 +170,8 @@ public class Registers {
      * @param flag Flag to query.
      * @return True if the flag is set.
      */
-    public boolean getFlag(Flag flag) {
-        return (flag.value & F) == flag.value;
+    public int getFlag(Flag flag) {
+        return ((F & flag.value) != 0) ? 1 : 0;
     }
 
     /**
@@ -180,7 +180,7 @@ public class Registers {
      * @param flag Flag to modify.
      * @param value True to set the flag, false to clear it.
      */
-    public void setFlag(Flag flag, boolean value) {
-        F = (F & ~flag.value) | (value ? flag.value : 0);
+    public void setFlag(Flag flag, int value) {
+        F = (F & ~flag.value) | ((value & 1) * flag.value);
     }
 }
