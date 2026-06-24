@@ -86,7 +86,7 @@ public class CPU {
      * @param code Register encoding.
      * @return Register value or memory contents at HL.
      */
-    private int getRegister(int code) {
+    private int getRegister8(int code) {
         return switch (code) {
             case 0b000 -> registers.getB();
             case 0b001 -> registers.getC();
@@ -109,7 +109,7 @@ public class CPU {
      * @param code Register encoding.
      * @param value Value to write.
      */
-    private void setRegister(int code, int value) {
+    private void setRegister8(int code, int value) {
         switch (code) {
             case 0b000 -> registers.setB(value);
             case 0b001 -> registers.setC(value);
@@ -164,6 +164,70 @@ public class CPU {
 
             registers.setPC((high << 8) | low);
         };
+
+        // PUSH BC
+        opcodes[0xC5] = () -> {
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getB());
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getC());
+        };
+
+        // PUSH DE
+        opcodes[0xD5] = () -> {
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getD());
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getE());
+        };
+
+        // PUSH HL
+        opcodes[0xE5] = () -> {
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getH());
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getL());
+        };
+
+        // PUSH AF
+        opcodes[0xF5] = () -> {
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getA());
+            registers.setSP(registers.getSP() - 1);
+            bus.write(registers.getSP(), registers.getF());
+        };
+
+            // POP BC
+            opcodes[0xC1] = () -> {
+                registers.setC(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+                registers.setB(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+            };
+
+            // POP DE
+            opcodes[0xD1] = () -> {
+                registers.setE(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+                registers.setD(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+            };
+
+            // POP HL
+            opcodes[0xE1] = () -> {
+                registers.setL(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+                registers.setH(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+            };
+
+            // POP AF
+            opcodes[0xF1] = () -> {
+                registers.setF(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+                registers.setA(bus.read(registers.getSP()));
+                registers.setSP(registers.getSP() + 1);
+            };
 
         // DI
         opcodes[0xF3] = this::nop;
@@ -226,7 +290,7 @@ public class CPU {
             int dest = i;
             int opcode = (i << 3) | 0x06;
 
-            opcodes[opcode] = () -> setRegister(dest, readNextByte());
+            opcodes[opcode] = () -> setRegister8(dest, readNextByte());
         }
 
         // 8-bit register to register loads
@@ -235,7 +299,7 @@ public class CPU {
             int dest = i >> 3 & 0x07;
             int src = i & 0x07;
 
-            opcodes[i] = () -> setRegister(dest, getRegister(src));
+            opcodes[i] = () -> setRegister8(dest, getRegister8(src));
         }
 
         // LD (FF00+u8), A
@@ -279,16 +343,19 @@ public class CPU {
             }
         };
 
+        // JR u8
+        opcodes[0x18] = () -> registers.setPC(registers.getPC() + (byte) readNextByte());
+
         // INC r8
         for (int i = 0; i <= 7; i++) {
             int dest = i;
             int opcode = (dest << 3) | 0x04;
 
             opcodes[opcode] = () -> {
-                int value = getRegister(dest);
+                int value = getRegister8(dest);
                 int result = value + 1;
 
-                setRegister(dest, getRegister(dest) + 1);
+                setRegister8(dest, getRegister8(dest) + 1);
 
                 registers.setFlag(Flag.Z, (result & 0xFF) == 0);
                 registers.setFlag(Flag.N, false);
@@ -302,10 +369,10 @@ public class CPU {
             int opcode = (dest << 3) | 0x05;
 
             opcodes[opcode] = () -> {
-                int value = getRegister(dest);
+                int value = getRegister8(dest);
                 int result = value - 1;
 
-                setRegister(dest, getRegister(dest) - 1);
+                setRegister8(dest, getRegister8(dest) - 1);
 
                 registers.setFlag(Flag.Z, (result & 0xFF) == 0);
                 registers.setFlag(Flag.N, true);
@@ -313,6 +380,29 @@ public class CPU {
             };
         }
 
+        // INC BC
+        opcodes[0x03] = () -> registers.setBC(registers.getBC() + 1);
+
+        // INC DE
+        opcodes[0x13] = () -> registers.setDE(registers.getDE() + 1);
+
+        // INC HL
+        opcodes[0x23] = () -> registers.setHL(registers.getHL() + 1);
+
+        // INC SP
+        opcodes[0x33] = () -> registers.setSP(registers.getSP() + 1);
+
+        // DEC BC
+        opcodes[0x0B] = () -> registers.setBC(registers.getBC() - 1);
+
+        // DEC DE
+        opcodes[0x1B] = () -> registers.setDE(registers.getDE() - 1);
+
+        // DEC HL
+        opcodes[0x2B] = () -> registers.setHL(registers.getHL() - 1);
+
+        // DEC SP
+        opcodes[0x3B] = () -> registers.setSP(registers.getSP() - 1);
 
 
         // 0xCB prefix
