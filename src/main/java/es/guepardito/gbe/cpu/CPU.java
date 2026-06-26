@@ -25,7 +25,18 @@ public class CPU {
     public CPU(Bus bus) {
         this.bus = bus;
         this.registers = new Registers();
+
+        opcodes = new Runnable[256];
+        opcodesCB = new Runnable[256];
+
+        for (int i = 0; i < 256; i++) {
+            final int opcode = i;
+            opcodes[i] = () -> unknownOpcode(opcode);
+            opcodesCB[i] = () -> unknownOpcode(opcode);
+        }
+
         buildOpcodeTable();
+        buildOpcodeTableCB();
     }
 
     /**
@@ -131,15 +142,6 @@ public class CPU {
      * <p>The CB-prefixed instruction set uses a separate dispatch table.</p>
      */
     private void buildOpcodeTable() {
-        opcodes = new Runnable[256];
-        opcodesCB = new Runnable[256];
-
-        for (int i = 0; i < 256; i++) {
-            final int opcode = i;
-            opcodes[i] = () -> unknownOpcode(opcode);
-            opcodesCB[i] = () -> unknownOpcode(opcode);
-        }
-
         // nop
         opcodes[0x00] = this::nop;
 
@@ -736,6 +738,44 @@ public class CPU {
 
         // 0xCB prefix
         opcodes[0xCB] = this::stepCB;
+    }
+    
+    private void buildOpcodeTableCB() {
+        // RR r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x18 + code;
+
+            opcodesCB[opcode] = () -> {
+                int b0 = getRegisterFromCode(code) & 0x1;
+                int newValue = getRegisterFromCode(code) >> 1 | registers.getFlag(Flag.C) << 7;
+
+                setRegisterFromCode(code, newValue);
+
+                registers.setFlag(Flag.Z, (newValue == 0) ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, 0);
+                registers.setFlag(Flag.C, (b0 == 1) ? 1 : 0);
+            };
+        }
+
+        // SRL r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x38 + code;
+
+            opcodesCB[opcode] = () -> {
+                int b0 = getRegisterFromCode(code) & 0x1;
+                int newValue = getRegisterFromCode(code) >> 1;
+
+                setRegisterFromCode(code, newValue);
+
+                registers.setFlag(Flag.Z, (newValue == 0) ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, 0);
+                registers.setFlag(Flag.C, (b0 == 1 )? 1 : 0);
+            };
+        }
     }
 
     /**
