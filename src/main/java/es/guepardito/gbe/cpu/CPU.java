@@ -395,10 +395,10 @@ public class CPU {
             }
         };
 
-        // JR NZ, u8
+        // JR Z, u8
         opcodes[0x28] = () -> {
             int offset = readNextByte();
-            if (registers.getFlag(Flag.Z) != 0) {
+            if (registers.getFlag(Flag.Z) == 1) {
                 registers.setPC(registers.getPC() + (byte) offset);
             }
         };
