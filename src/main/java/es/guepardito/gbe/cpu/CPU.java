@@ -403,6 +403,22 @@ public class CPU {
             }
         };
 
+        // JR NC, u8
+        opcodes[0x30] = () -> {
+            int offset = readNextByte();
+            if (registers.getFlag(Flag.C) == 0) {
+                registers.setPC(registers.getPC() + (byte) offset);
+            }
+        };
+
+        // JR C, u8
+        opcodes[0x38] = () -> {
+            int offset = readNextByte();
+            if (registers.getFlag(Flag.C) == 1) {
+                registers.setPC(registers.getPC() + (byte) offset);
+            }
+        };
+
         // JR u8
         opcodes[0x18] = () -> registers.setPC(registers.getPC() + (byte) readNextByte());
 
@@ -435,7 +451,7 @@ public class CPU {
                 setRegisterFromCode(dest, getRegisterFromCode(dest) - 1);
 
                 registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
-                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.N, 1);
                 registers.setFlag(Flag.H, (value & 0xF) == 0 ? 1 : 0);
             };
         }
@@ -728,7 +744,8 @@ public class CPU {
      * @param opcode Opcode value.
      */
     private void unknownOpcode(int opcode) {
-        System.out.printf("Unknown opcode: 0x%02X at PC: 0x%04X%n", opcode, registers.getPC() - 1);
+        System.out.printf("Before unknown opcode: 0x%02X at PC: 0x%04X%n", bus.read(registers.getPC()), registers.getPC() - 2);
+        System.out.printf("Unknown opcode: 0x%02X at PC: 0x%04X%n \n\n", opcode, registers.getPC() - 1);
     }
 
     /**
