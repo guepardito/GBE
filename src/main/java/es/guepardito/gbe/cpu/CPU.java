@@ -155,6 +155,34 @@ public class CPU {
             registers.setPC(dest);
         };
 
+        // CALL NZ, u16
+        opcodes[0xC4] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.Z) == 0) {
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() >> 8);
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() & 0xFF);
+
+                registers.setPC(dest);
+            }
+        };
+
+        // CALL Z, u16
+        opcodes[0xCC] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.Z) == 1) {
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() >> 8);
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() & 0xFF);
+
+                registers.setPC(dest);
+            }
+        };
+
         // RET
         opcodes[0xC9] = () -> {
             int low = bus.read(registers.getSP());
@@ -163,6 +191,30 @@ public class CPU {
             registers.setSP(registers.getSP() + 1);
 
             registers.setPC((high << 8) | low);
+        };
+
+        // RET NZ
+        opcodes[0xC0] = () -> {
+            if (registers.getFlag(Flag.Z) == 0) {
+                int low = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+                int high = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+
+                registers.setPC((high << 8) | low);
+            }
+        };
+
+        // RET Z
+        opcodes[0xC8] = () -> {
+            if (registers.getFlag(Flag.Z) == 1) {
+                int low = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+                int high = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+
+                registers.setPC((high << 8) | low);
+            }
         };
 
         // PUSH BC
