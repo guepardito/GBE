@@ -219,6 +219,30 @@ public class CPU {
             }
         };
 
+        // RET NC
+        opcodes[0xD0] = () -> {
+            if (registers.getFlag(Flag.C) == 0) {
+                int low = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+                int high = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+
+                registers.setPC((high << 8) | low);
+            }
+        };
+
+        // RET NC
+        opcodes[0xD8] = () -> {
+            if (registers.getFlag(Flag.C) == 0) {
+                int low = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+                int high = bus.read(registers.getSP());
+                registers.setSP(registers.getSP() + 1);
+
+                registers.setPC((high << 8) | low);
+            }
+        };
+
         // PUSH BC
         opcodes[0xC5] = () -> {
             registers.setSP(registers.getSP() - 1);
