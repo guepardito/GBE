@@ -749,10 +749,22 @@ public class CPU {
         };
 
         // RRCA
-        opcodes[0x1F] = () -> {
+        opcodes[0x0F] = () -> {
             int b0 = registers.getA() & 0x1;
 
             registers.setA(registers.getA() >> 1 | b0 << 7);
+
+            registers.setFlag(Flag.Z, 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, b0);
+        };
+
+        // RRA
+        opcodes[0x1F] = () -> {
+            int b0 = registers.getA() & 0x1;
+
+            registers.setA(registers.getA() >> 1 | registers.getFlag(Flag.C) << 7);
 
             registers.setFlag(Flag.Z, 0);
             registers.setFlag(Flag.N, 0);
