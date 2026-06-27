@@ -736,10 +736,23 @@ public class CPU {
             registers.setFlag(Flag.C, result < 0 ? 1 : 0);
         };
 
+        // RRCA
+        opcodes[0x1F] = () -> {
+            int b0 = registers.getA() & 0x1;
+
+            registers.setA(registers.getA() >> 1 | b0 << 7);
+
+            registers.setFlag(Flag.Z, 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, b0);
+        };
+
+
         // 0xCB prefix
         opcodes[0xCB] = this::stepCB;
     }
-    
+
     private void buildOpcodeTableCB() {
         // RR r8
         for (int i = 0; i < 8; i++) {
@@ -755,7 +768,7 @@ public class CPU {
                 registers.setFlag(Flag.Z, (newValue == 0) ? 1 : 0);
                 registers.setFlag(Flag.N, 0);
                 registers.setFlag(Flag.H, 0);
-                registers.setFlag(Flag.C, (b0 == 1) ? 1 : 0);
+                registers.setFlag(Flag.C, b0);
             };
         }
 
@@ -773,7 +786,7 @@ public class CPU {
                 registers.setFlag(Flag.Z, (newValue == 0) ? 1 : 0);
                 registers.setFlag(Flag.N, 0);
                 registers.setFlag(Flag.H, 0);
-                registers.setFlag(Flag.C, (b0 == 1 )? 1 : 0);
+                registers.setFlag(Flag.C, b0);
             };
         }
     }
