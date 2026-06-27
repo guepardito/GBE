@@ -413,6 +413,9 @@ public class CPU {
         // JP u16
         opcodes[0xC3] = () -> registers.setPC(readNextWord());
 
+        // JP HL
+        opcodes[0xE9] = () -> registers.setPC(registers.getHL());
+
         // JR NZ, u8
         opcodes[0x20] = () -> {
             int offset = readNextByte();
@@ -505,6 +508,61 @@ public class CPU {
 
         // DEC SP
         opcodes[0x3B] = () -> registers.setSP(registers.getSP() - 1);
+
+        // ADD HL, BC
+        opcodes[0x09] = () -> {
+            int bc = registers.getBC();
+            int hl = registers.getHL();
+
+            int result = hl + bc;
+
+            registers.setHL(result);
+
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((hl & 0x0FFF) + (bc & 0x0FFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (bc & 0xFFFF)) > 0x0FFF ? 1 : 0);
+        };
+
+        // ADD HL, DE
+        opcodes[0x19] = () -> {
+            int de = registers.getDE();
+            int hl = registers.getHL();
+
+            int result = hl + de;
+
+            registers.setHL(result);
+
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((hl & 0x0FFF) + (de & 0x0FFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (de & 0xFFFF)) > 0x0FFF ? 1 : 0);
+        };
+
+        // ADD HL, HL
+        opcodes[0x29] = () -> {
+            int hl = registers.getHL();
+
+            int result = hl + hl;
+
+            registers.setHL(result);
+
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((hl & 0x0FFF) + (hl & 0x0FFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (hl & 0xFFFF)) > 0x0FFF ? 1 : 0);
+        };
+
+        // ADD HL, SP
+        opcodes[0x39] = () -> {
+            int sp = registers.getSP();
+            int hl = registers.getHL();
+
+            int result = hl + sp;
+
+            registers.setHL(result);
+
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((hl & 0x0FFF) + (sp & 0x0FFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (sp & 0xFFFF)) > 0x0FFF ? 1 : 0);
+        };
 
         // ADD A, r8
         for (int i = 0; i < 8; i++) {
