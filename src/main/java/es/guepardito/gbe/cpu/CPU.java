@@ -760,6 +760,18 @@ public class CPU {
             registers.setFlag(Flag.C, b0);
         };
 
+        // RLA
+        opcodes[0x17] = () -> {
+            int b7 = (registers.getA() & 0x80) >> 7;
+
+            registers.setA(registers.getA() << 1 | registers.getFlag(Flag.C));
+
+            registers.setFlag(Flag.Z, 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, b7);
+        };
+
         // RRA
         opcodes[0x1F] = () -> {
             int b0 = registers.getA() & 0x1;
