@@ -74,9 +74,9 @@ public class Bus {
         } else if (address >= 0xFF00 && address <= 0xFF7F) {
             ioRegisters[address - 0xFF00] = (byte) value;
 
-            if (address == 0xFF02 && value == 0x81) {
-                System.out.print((char) read(0xFF01));
-            }
+//            if (address == 0xFF02 && value == 0x81) {
+//                System.out.print((char) read(0xFF01));
+//            }
         }   else if (address >= 0xFF80 && address <= 0xFFFE) {
             hram[address - 0xFF80] = (byte) value;
         }

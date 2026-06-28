@@ -410,11 +410,62 @@ public class CPU {
             registers.setA(bus.read(address));
         };
 
+        // LD HL, SP+e
+        opcodes[0xF8] = () -> {
+            int e = readNextByte();
+            int SP = registers.getSP();
+
+            int result = SP + e;
+
+            registers.setHL(result);
+
+            registers.setFlag(Flag.Z, 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((SP & 0x0F) + (e & 0x0F)) > 0x0F ? 1 : 0);
+            registers.setFlag(Flag.C, ((SP & 0xFF) + (e & 0xFF)) > 0xFF ? 1 : 0);
+        };
+
         // JP u16
         opcodes[0xC3] = () -> registers.setPC(readNextWord());
 
         // JP HL
         opcodes[0xE9] = () -> registers.setPC(registers.getHL());
+
+        // JP NZ, u16
+        opcodes[0xC2] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.Z) == 0) {
+                registers.setPC(dest);
+            }
+        };
+
+        // JP Z, u16
+        opcodes[0xCA] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.Z) == 1) {
+                registers.setPC(dest);
+            }
+        };
+
+        // JP NC, u16
+        opcodes[0xD2] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.Z) == 0) {
+                registers.setPC(dest);
+            }
+        };
+
+        // JP NC, u16
+        opcodes[0xDA] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.Z) == 1) {
+                registers.setPC(dest);
+            }
+        };
 
         // JR NZ, u8
         opcodes[0x20] = () -> {
@@ -450,6 +501,13 @@ public class CPU {
 
         // JR u8
         opcodes[0x18] = () -> registers.setPC(registers.getPC() + (byte) readNextByte());
+
+        // SCF
+        opcodes[0x37] = () -> {
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, 1);
+        };
 
         // INC r8
         for (int i = 0; i <= 7; i++) {
@@ -890,6 +948,21 @@ public class CPU {
             };
         }
 
+        // SWAP r8
+        for (int i = 0; i < 8; i++) {
+            int code = i;
+            int opcode = 0x30 + code;
+
+            opcodesCB[opcode] = () -> {
+                setRegisterFromCode(code, (getRegisterFromCode(code) << 4) | (getRegisterFromCode(code) >> 4));
+
+                registers.setFlag(Flag.Z, (getRegisterFromCode(code) == 0) ? 1 : 0);
+                registers.setFlag(Flag.N, 0);
+                registers.setFlag(Flag.H, 0);
+                registers.setFlag(Flag.C, 0);
+            };
+        }
+
         // SRL r8
         for (int i = 0; i < 8; i++) {
             int code = i;
@@ -906,6 +979,19 @@ public class CPU {
                 registers.setFlag(Flag.H, 0);
                 registers.setFlag(Flag.C, b0);
             };
+        }
+
+        // SET bit, r8
+        for (int b = 0; b < 8; b++) { // bit
+            for (int c = 0; c < 8; c++) { // register
+                int bit = b;
+                int code = c;
+                int opcode = 0xC0 + (bit << 3) + code;
+
+                opcodesCB[opcode] = () -> {
+                    setRegisterFromCode(code, getRegisterFromCode(code) | (1 << bit));
+                };
+            }
         }
     }
 
