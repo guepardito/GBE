@@ -22,9 +22,13 @@ public class CPU {
     /** CB-prefixed opcode dispatch table. */
     private Runnable[] opcodesCB;
 
+    private boolean ime;
+
     public CPU(Bus bus) {
         this.bus = bus;
         this.registers = new Registers();
+
+        ime = false;
 
         opcodes = new Runnable[256];
         opcodesCB = new Runnable[256];
@@ -145,6 +149,22 @@ public class CPU {
         // nop
         opcodes[0x00] = this::nop;
 
+        // CPL
+        opcodes[0x2F] = () -> {
+            registers.setA(~registers.getA());
+
+            registers.setFlag(Flag.N, 1);
+            registers.setFlag(Flag.H, 1);
+        };
+
+        // CCF
+        opcodes[0x3F] = () -> {
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, registers.getFlag(Flag.C) == 0 ? 1 : 0);
+        };
+
+
         // CALL u16
         opcodes[0xCD] = () -> {
             int dest = readNextWord();
@@ -231,9 +251,9 @@ public class CPU {
             }
         };
 
-        // RET NC
+        // RET C
         opcodes[0xD8] = () -> {
-            if (registers.getFlag(Flag.C) == 0) {
+            if (registers.getFlag(Flag.C) == 1) {
                 int low = bus.read(registers.getSP());
                 registers.setSP(registers.getSP() + 1);
                 int high = bus.read(registers.getSP());
@@ -308,10 +328,10 @@ public class CPU {
         };
 
         // DI
-        opcodes[0xF3] = this::nop;
+        opcodes[0xF3] = () -> ime = false;
 
         // EI
-        opcodes[0xFB] = this::nop;
+        opcodes[0xFB] = () -> ime = true;
 
         // LD BC, u16
         opcodes[0x01] = () -> registers.setBC(readNextWord());
@@ -412,7 +432,7 @@ public class CPU {
 
         // LD HL, SP+e
         opcodes[0xF8] = () -> {
-            int e = readNextByte();
+            int e = (byte) readNextByte();
             int SP = registers.getSP();
 
             int result = SP + e;
@@ -453,16 +473,16 @@ public class CPU {
         opcodes[0xD2] = () -> {
             int dest = readNextWord();
 
-            if (registers.getFlag(Flag.Z) == 0) {
+            if (registers.getFlag(Flag.C) == 0) {
                 registers.setPC(dest);
             }
         };
 
-        // JP NC, u16
+        // JP C, u16
         opcodes[0xDA] = () -> {
             int dest = readNextWord();
 
-            if (registers.getFlag(Flag.Z) == 1) {
+            if (registers.getFlag(Flag.C) == 1) {
                 registers.setPC(dest);
             }
         };
@@ -578,7 +598,7 @@ public class CPU {
 
             registers.setFlag(Flag.N, 0);
             registers.setFlag(Flag.H, ((hl & 0x0FFF) + (bc & 0x0FFF)) > 0x0FFF ? 1 : 0);
-            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (bc & 0xFFFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (bc & 0xFFFF)) > 0xFFFF ? 1 : 0);
         };
 
         // ADD HL, DE
@@ -592,7 +612,7 @@ public class CPU {
 
             registers.setFlag(Flag.N, 0);
             registers.setFlag(Flag.H, ((hl & 0x0FFF) + (de & 0x0FFF)) > 0x0FFF ? 1 : 0);
-            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (de & 0xFFFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (de & 0xFFFF)) > 0xFFFF ? 1 : 0);
         };
 
         // ADD HL, HL
@@ -605,7 +625,7 @@ public class CPU {
 
             registers.setFlag(Flag.N, 0);
             registers.setFlag(Flag.H, ((hl & 0x0FFF) + (hl & 0x0FFF)) > 0x0FFF ? 1 : 0);
-            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (hl & 0xFFFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (hl & 0xFFFF)) > 0xFFFF ? 1 : 0);
         };
 
         // ADD HL, SP
@@ -619,7 +639,7 @@ public class CPU {
 
             registers.setFlag(Flag.N, 0);
             registers.setFlag(Flag.H, ((hl & 0x0FFF) + (sp & 0x0FFF)) > 0x0FFF ? 1 : 0);
-            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (sp & 0xFFFF)) > 0x0FFF ? 1 : 0);
+            registers.setFlag(Flag.C, ((hl & 0xFFFF) + (sp & 0xFFFF)) > 0xFFFF ? 1 : 0);
         };
 
         // ADD A, r8
@@ -924,6 +944,22 @@ public class CPU {
             registers.setFlag(Flag.C, b0);
         };
 
+        // DAA
+        opcodes[0x27] = () -> {
+            // TODO
+            int result = 0;
+            System.out.println("OPCODE INSTRUCTION: DAA");
+
+            registers.setFlag(Flag.Z, (result == 0) ? 1 : 0);
+            registers.setFlag(Flag.H, 0);
+            registers.setFlag(Flag.C, (result > 0x99) ? 1 : 0);
+        };
+
+        // HALT
+        opcodes[0x76] = () -> {
+            //TODO
+            System.out.println("OPCODE INSTRUCTION: HALT");
+        };
 
         // 0xCB prefix
         opcodes[0xCB] = this::stepCB;
@@ -954,9 +990,11 @@ public class CPU {
             int opcode = 0x30 + code;
 
             opcodesCB[opcode] = () -> {
-                setRegisterFromCode(code, (getRegisterFromCode(code) << 4) | (getRegisterFromCode(code) >> 4));
+                int value = getRegisterFromCode(code);
+                int swapped = ((value << 4) | (value >> 4)) & 0xFF;
+                setRegisterFromCode(code, swapped);
 
-                registers.setFlag(Flag.Z, (getRegisterFromCode(code) == 0) ? 1 : 0);
+                registers.setFlag(Flag.Z, (swapped == 0) ? 1 : 0);
                 registers.setFlag(Flag.N, 0);
                 registers.setFlag(Flag.H, 0);
                 registers.setFlag(Flag.C, 0);
