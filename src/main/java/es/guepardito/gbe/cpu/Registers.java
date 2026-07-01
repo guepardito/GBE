@@ -88,7 +88,7 @@ public class Registers {
     }
 
     public int getF() {
-        return F;
+        return F & 0xF0;
     }
 
     public void setF(int f) {

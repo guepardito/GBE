@@ -16,11 +16,15 @@ import es.guepardito.gbe.cartridge.Cartridge;
 public class Bus {
     /** Loaded game cartridge. */
     private final Cartridge cartridge;
+    private final int[] vram;
+    private final int[] eram;
     /** Internal Work RAM (8 KB). */
-    private final byte[] wram;
+    private final int[] wram;
+    private final int[] oam;
+    private final int[] ioRegisters;
     /** High RAM (127 bytes). */
-    private final byte[] hram;
-    private final byte[] ioRegisters;
+    private final int[] hram;
+    private int ie;
 
     /**
      * Creates a new memory bus.
@@ -29,9 +33,13 @@ public class Bus {
      */
     public Bus(Cartridge cartridge) {
         this.cartridge = cartridge;
-        wram = new byte[0x2000]; // 8KB of Work RAM
-        hram = new byte[0x80];   // 127 bytes of High RAM
-        ioRegisters = new byte[0x80]; // 127 bytes of I/O registers
+        vram = new int[0x2000]; // 8kb of Video RAM
+        eram = new int[0x2000]; // 8kb of External RAM
+        wram = new int[0x2000]; // 8KB of Work RAM
+        oam = new int[0xA0];
+        ioRegisters = new int[0x80]; // 127 bytes of I/O registers
+        hram = new int[0x80];   // 127 bytes of High RAM
+        ie = 0;
     }
 
     /**
@@ -46,14 +54,23 @@ public class Bus {
     public int read(int address) {
         if (address >= 0 && address <= 0x7FFF) {
             return cartridge.readByte(address);
+        } else if (address >= 0x8000 && address <= 0x9FFF) {
+            return vram[address - 0x8000] & 0xFF;
+        } else if (address >= 0xA000 && address <= 0xBFFF) {
+            return eram[address - 0xA000] & 0xFF;
         } else if (address >= 0xC000 && address <= 0xDFFF) {
             return wram[address - 0xC000] & 0xFF;
+        } else if (address >= 0xE000 && address <= 0xFDFF) {
+            return wram[address - 0xE000] & 0xFF; // Echo RAM
+        } else if (address >= 0xFE00 && address <= 0xFE9F) {
+            return oam[address - 0xFE00] & 0xFF;
         } else if (address >= 0xFF00 && address <= 0xFF7F) {
             return ioRegisters[address - 0xFF00]  & 0xFF;
         }  else if (address >= 0xFF80 && address <= 0xFFFE) {
             return hram[address - 0xFF80]  & 0xFF;
+        } else if (address == 0xFFFF) {
+            return ie;
         }
-
         return 0xFF;
     }
 
@@ -68,18 +85,25 @@ public class Bus {
      */
     public void write(int address, int value) {
         if (address >= 0 && address <= 0x7FFF) {
-            // ROM is read-only, do nothing
+            cartridge.writeByte(address, value);
+        } else if (address >= 0x8000 && address <= 0x9FFF) {
+            vram[address - 0x8000] = (byte) value;
+        } else if (address >= 0xA000 && address <= 0xBFFF) {
+            eram[address - 0xA000] = (byte) value;
         } else if (address >= 0xC000 && address <= 0xDFFF) {
             wram[address - 0xC000] = (byte) value;
+        } else if (address >= 0xE000 && address <= 0xFDFF) {
+            wram[address - 0xE000] = (byte) value; // Echo RAM
+        } else if (address >= 0xFE00 && address <= 0xFE9F) {
+            oam[address - 0xFE00] = (byte) value;
         } else if (address >= 0xFF00 && address <= 0xFF7F) {
             ioRegisters[address - 0xFF00] = (byte) value;
-
-//            if (address == 0xFF02 && value == 0x81) {
-//                System.out.print((char) read(0xFF01));
-//            }
         }   else if (address >= 0xFF80 && address <= 0xFFFE) {
             hram[address - 0xFF80] = (byte) value;
+        } else if (address == 0xFFFF) {
+            // TODO
         }
+        // TODO: Hacer el resto que esta en read
     }
 
     public Cartridge getCartridge() {

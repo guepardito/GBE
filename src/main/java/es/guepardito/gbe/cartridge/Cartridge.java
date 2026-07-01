@@ -26,7 +26,17 @@ public class Cartridge {
         }
 
         boolean isValid = validateChecksum(rom[0x014D]);
-        System.out.println("Cartridge is valid? " + isValid);
+        StringBuilder title = new StringBuilder();
+
+        for (int i = 0x0134; i <= 0x0143; i++) {
+            int c = readByte(i);
+            if (c == 0) break;
+            title.append((char) c);
+        }
+
+        System.out.println("Title: " + title);
+
+        System.out.printf("Type=%02X%n", readByte(0x147));
     }
 
     // x=0:FOR i=0134h TO 014Ch:x=x-MEM[i]-1:NEXT
@@ -44,5 +54,8 @@ public class Cartridge {
 
     public int readByte(int address) {
         return rom[address] & 0xFF;
+    }
+    public void writeByte(int address, int value) {
+        rom[address] = (byte) (value & 0xFF);
     }
 }

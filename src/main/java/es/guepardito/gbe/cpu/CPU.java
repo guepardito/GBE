@@ -43,6 +43,7 @@ public class CPU {
         buildOpcodeTableCB();
     }
 
+    private int counter = 0;
     /**
      * Executes a single CPU instruction.
      *
@@ -52,6 +53,25 @@ public class CPU {
      */
     public void step() {
         // Fetch
+        int low = bus.read(registers.getPC() + 1);
+        int high = bus.read(registers.getPC() + 2);
+        int nextWord = (high << 8) | low;
+
+        if (counter == 500) {
+            System.out.printf(
+                    "PC=0x%04X OPCODE=0x%02X SP=0x%04X Nextu8=0x%02X Nextu16=0x%04X FLAG.Z=%d FLAG.N=%d FLAG.H=%d FLAG.C=%d%n",
+                    registers.getPC(),
+                    bus.read(registers.getPC()),
+                    registers.getSP(),
+                    bus.read(registers.getPC() + 1),
+                    nextWord,
+                    registers.getFlag(Flag.Z),
+                    registers.getFlag(Flag.N),
+                    registers.getFlag(Flag.H),
+                    registers.getFlag(Flag.C)
+            );
+            counter = 0;
+        }
         int opcode = bus.read(registers.getPC());
         registers.setPC(registers.getPC() + 1);
         opcodes[opcode].run();
@@ -149,6 +169,9 @@ public class CPU {
         // nop
         opcodes[0x00] = this::nop;
 
+        // stop
+        opcodes[0x10] = this::readNextByte;
+
         // CPL
         opcodes[0x2F] = () -> {
             registers.setA(~registers.getA());
@@ -196,6 +219,34 @@ public class CPU {
             int dest = readNextWord();
 
             if (registers.getFlag(Flag.Z) == 1) {
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() >> 8);
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() & 0xFF);
+
+                registers.setPC(dest);
+            }
+        };
+
+        // CALL NC, u16
+        opcodes[0xD4] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.C) == 0) {
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() >> 8);
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() & 0xFF);
+
+                registers.setPC(dest);
+            }
+        };
+
+        // CALL C, u16
+        opcodes[0xDC] = () -> {
+            int dest = readNextWord();
+
+            if (registers.getFlag(Flag.C) == 1) {
                 registers.setSP(registers.getSP() - 1);
                 bus.write(registers.getSP(), registers.getPC() >> 8);
                 registers.setSP(registers.getSP() - 1);
@@ -261,6 +312,18 @@ public class CPU {
 
                 registers.setPC((high << 8) | low);
             }
+        };
+
+        // RETI
+        opcodes[0xD9] = () -> {
+            int low = bus.read(registers.getSP());
+            registers.setSP(registers.getSP() + 1);
+            int high = bus.read(registers.getSP());
+            registers.setSP(registers.getSP() + 1);
+
+            registers.setPC((high << 8) | low);
+            ime = true;
+
         };
 
         // PUSH BC
@@ -538,7 +601,7 @@ public class CPU {
                 int value = getRegisterFromCode(dest);
                 int result = value + 1;
 
-                setRegisterFromCode(dest, getRegisterFromCode(dest) + 1);
+                setRegisterFromCode(dest, value + 1);
 
                 registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
                 registers.setFlag(Flag.N, 0);
@@ -555,7 +618,7 @@ public class CPU {
                 int value = getRegisterFromCode(dest);
                 int result = value - 1;
 
-                setRegisterFromCode(dest, getRegisterFromCode(dest) - 1);
+                setRegisterFromCode(dest, value - 1);
 
                 registers.setFlag(Flag.Z, (result & 0xFF) == 0 ? 1 : 0);
                 registers.setFlag(Flag.N, 1);
@@ -896,6 +959,21 @@ public class CPU {
             registers.setFlag(Flag.C, result < 0 ? 1 : 0);
         };
 
+        // ADD SP, i8
+        opcodes[0xE8] = () -> {
+            int sp = registers.getSP();
+            int i8 = (byte) readNextByte();
+
+            int result = sp + i8;
+
+            registers.setSP(result);
+
+            registers.setFlag(Flag.Z, 0);
+            registers.setFlag(Flag.N, 0);
+            registers.setFlag(Flag.H, ((sp & 0x0F) + (i8 & 0x0F)) > 0x0F ? 1 : 0);
+            registers.setFlag(Flag.C, ((sp & 0xFF) + (i8 & 0xFF)) > 0xFF ? 1 : 0);
+        };
+
         // RLCA
         opcodes[0x07] = () -> {
             int b7 = (registers.getA() & 0x80) >> 7;
@@ -912,7 +990,7 @@ public class CPU {
         opcodes[0x0F] = () -> {
             int b0 = registers.getA() & 0x1;
 
-            registers.setA(registers.getA() >> 1 | b0 << 7);
+            registers.setA(registers.getA() >>> 1 | b0 << 7);
 
             registers.setFlag(Flag.Z, 0);
             registers.setFlag(Flag.N, 0);
@@ -944,15 +1022,51 @@ public class CPU {
             registers.setFlag(Flag.C, b0);
         };
 
+        // RST n
+        for (int i = 0; i < 8; i++) {
+            final int n = i * 8;
+            final int opcode = 0xC7 + n;
+
+            opcodes[opcode] = () -> {
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() >> 8);
+                registers.setSP(registers.getSP() - 1);
+                bus.write(registers.getSP(), registers.getPC() & 0xFF);
+
+                registers.setPC(n);
+            };
+        }
+        System.out.println("RST opcodes:");
+        int[] rstOpcodes = {0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF};
+        for (int op : rstOpcodes) {
+            System.out.printf("  0x%02X -> %s%n", op, opcodes[op] != null ? "assigned" : "null");
+        }
+
         // DAA
         opcodes[0x27] = () -> {
-            // TODO
-            int result = 0;
-            System.out.println("OPCODE INSTRUCTION: DAA");
+            int antes = registers.getA();
 
-            registers.setFlag(Flag.Z, (result == 0) ? 1 : 0);
+            int a = registers.getA();
+            if (registers.getFlag(Flag.N) == 0) {
+                if (registers.getFlag(Flag.C) == 1 || a > 0x99) {
+                    a += 0x60;
+                    registers.setFlag(Flag.C, 1);
+                }
+                if (registers.getFlag(Flag.H) == 1 || (a & 0x0F) > 0x9) {
+                    a += 0x06;
+                }
+            } else {
+                if (registers.getFlag(Flag.C) == 1) a -= 0x60;
+                if (registers.getFlag(Flag.H) == 1) a -= 0x06;
+            }
+
+            registers.setA(a);
+            registers.setFlag(Flag.Z, (registers.getA() == 0) ? 1 : 0);
             registers.setFlag(Flag.H, 0);
-            registers.setFlag(Flag.C, (result > 0x99) ? 1 : 0);
+            System.out.printf("DAA: A antes=0x%02X N=%d H=%d C=%d -> A después=0x%02X%n",
+                    antes, registers.getFlag(Flag.N),
+                    registers.getFlag(Flag.H), registers.getFlag(Flag.C),
+                    registers.getA());
         };
 
         // HALT
@@ -968,12 +1082,13 @@ public class CPU {
     private void buildOpcodeTableCB() {
         // RR r8
         for (int i = 0; i < 8; i++) {
-            int code = i;
-            int opcode = 0x18 + code;
+            final int code = i;
+            final int opcode = 0x18 + code;
 
             opcodesCB[opcode] = () -> {
-                int b0 = getRegisterFromCode(code) & 0x1;
-                int newValue = getRegisterFromCode(code) >> 1 | registers.getFlag(Flag.C) << 7;
+                int value = getRegisterFromCode(code);
+                int b0 = value & 0x1;
+                int newValue = value >>> 1 | registers.getFlag(Flag.C) << 7;
 
                 setRegisterFromCode(code, newValue);
 
@@ -1007,8 +1122,9 @@ public class CPU {
             int opcode = 0x38 + code;
 
             opcodesCB[opcode] = () -> {
-                int b0 = getRegisterFromCode(code) & 0x1;
-                int newValue = getRegisterFromCode(code) >> 1;
+                int value = getRegisterFromCode(code);
+                int b0 = value & 0x1;
+                int newValue = value >>> 1;
 
                 setRegisterFromCode(code, newValue);
 
